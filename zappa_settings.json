@@ -1,0 +1,10 @@
+{
+    "dev": {
+        "app_function": "main.app",
+        "profile_name": "hugo102",
+        "project_name": "snek",
+        "runtime": "python3.7",
+        "s3_bucket": "zappa-snek",
+        "keep_warm": false
+    }
+}
