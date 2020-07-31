@@ -1,11 +1,11 @@
 <template>
     <Page>
         <ActionBar title="Welcome to NativeScript-Vue!"/>
-        <GridLayout columns="*" rows="*">
-            <Label class="message" :text="msg" col="0" row="0"/>
-            <Button :text="buttonText" class="btn btn-primary" marginTop="20"
+        <StackLayout orientation="vertical">
+            <Label class="message" :text="msg" />
+            <Button :text="buttonText" class="btn btn-primary"
                     @tap="takePicture"></Button>
-        </GridLayout>
+        </StackLayout>
     </Page>
 </template>
 
@@ -20,7 +20,7 @@
     export default {
         data() {
             return {
-                msg: 'Hello Hugo!',
+                msg: '?',
                 buttonText: "Snake?",
                 picture: null
             }
@@ -57,6 +57,16 @@
                                         qs.stringify(requestBody),
                                         config
                                     );
+                            })
+                            .then((response) => {
+                                if (response.data.some((e) => {
+                                    return e['Name'] == 'Snake'
+                                })) {
+                                    this.msg = 'Yes there is a snake here...';
+                                } else {
+                                    this.msg = 'There is no snake here...';
+                                }
+
                             })
                             .catch(function (err) {
                                 console.log("Error -> " + err.message);
