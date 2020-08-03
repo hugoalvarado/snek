@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@nativescript/theme": "^2.2.1",
+    "@nstudio/nativescript-camera-plus": "^3.0.7",
     "@vue/devtools": "^5.3.3",
     "axios": "^0.19.2",
     "nativescript-camera": "^4.5.0",
