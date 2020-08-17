@@ -33,7 +33,6 @@
 const TimerModule = require("tns-core-modules/timer");
 const ImageSource = require("tns-core-modules/image-source");
 import BitmapFactory = require("nativescript-bitmap-factory");
-
 const CameraPlus = require("@nstudio/nativescript-camera-plus").CameraPlus;
 const axios = require('axios').default;
 const qs = require('querystring')
@@ -50,8 +49,6 @@ export default {
     return {
       msg: '?',
       buttonText: "Snake?",
-      prevImage: null,
-      currentImage: null,
       cam: null,
       options: {
         width: 500,
