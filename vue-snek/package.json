@@ -19,12 +19,11 @@
     "@nstudio/nativescript-camera-plus": "^3.0.7",
     "@vue/devtools": "^5.3.3",
     "axios": "^0.19.2",
+    "nativescript-bitmap-factory": "^1.8.1",
     "nativescript-camera": "^4.5.0",
-    "nativescript-socketio": "^3.3.1",
     "nativescript-toasty": "^3.0.0-alpha.2",
     "nativescript-vue": "^2.6.1",
     "nativescript-vue-devtools": "^1.4.0",
-    "rembrandt": "^0.1.3",
     "tns-core-modules": "^6.5.1"
   },
   "devDependencies": {

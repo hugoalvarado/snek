@@ -1,6 +1,6 @@
 <template>
   <Page>
-    <ActionBar title="Welcome to NativeScript-Vue!"/>
+    <ActionBar title="Welcome to NativeScript-Vue Snake Detector 🐍!"/>
     <StackLayout orientation="vertical">
       <Label class="message" :text="msg"/>
       <CameraPlus height="300"
@@ -9,7 +9,7 @@
                   galleryPickerMode="single"
                   enableVideo="false"
                   confirmVideo="false"
-                  saveToGallery="false"
+                  saveToGallery="true"
                   showCaptureIcon="false"
                   showGalleryIcon="false"
                   showToggleIcon="true"
@@ -30,14 +30,20 @@
 </template>
 
 <script lang="ts">
-const timerModule = require("tns-core-modules/timer");
-const imageSourceModule = require("tns-core-modules/image-source");
+const TimerModule = require("tns-core-modules/timer");
+const ImageSource = require("tns-core-modules/image-source");
+import BitmapFactory = require("nativescript-bitmap-factory");
+
 const CameraPlus = require("@nstudio/nativescript-camera-plus").CameraPlus;
-const Rembrandt = require('rembrandt/build/browser');
 const axios = require('axios').default;
 const qs = require('querystring')
 
 const URL = 'https://8f80b27ydg.execute-api.us-east-1.amazonaws.com/dev/find';
+
+const FIRST_IMAGE = 0;
+const SECOND_IMAGE = 1;
+const PICTURE_INTERVAL = 5 * 1000; // 5 seconds
+const FIND_THIS = 'snake'
 
 export default {
   data() {
@@ -47,146 +53,144 @@ export default {
       prevImage: null,
       currentImage: null,
       cam: null,
-      CameraPlus: new CameraPlus()
+      options: {
+        width: 500,
+        height: 500,
+        keepAspectRatio: false,
+        saveToGallery: false
+      },
+      imageIndex: 0,
+      images: [null, null]
     }
   },
-  // mounted: function () {
-  //   this.currentImage = this.cam.takePicture({saveToGallery: false});
-  // },
+  mounted() {
+    this.schedulePictureComparison();
+  },
   methods: {
     onCameraLoaded(result) {
       this.cam = result.object;
       console.log("Camera loaded...");
     },
     onCameraError(result) {
-      console.log('CAMERA ERRROR EVENT');
+      console.log("Camera error...");
       console.log(result);
     },
     photoCaptured(args) {
-      this.currentImage = args.data;
-      console.log("ARGS - photoCaptured!");
+      // image  (args.data)is an imageAsset
+      this.loadImage(args.data);
+      console.log("Camera photoCaptured...");
+    },
+    loadImage(image) {
+      ImageSource.fromAsset(image)
+          .then(res => {
+            this.images[this.imageIndex] = res;
+            this.imageIndex++;
+            if (this.imageIndex > 1)
+              this.imageIndex = 0;
+          });
     },
     schedulePictureComparison() {
-      const id = timerModule.setInterval(() => {
-        if (this.compareImages(this.prevImage, this.currentImage)) {
-          //Images are different, is there a snake?
-          //Submit new image to api
-          //Check result
-          //Conditionally notify
+      const id = TimerModule.setInterval(() => {
+        this.takePicture();
+        if (this.images[FIRST_IMAGE] != null && this.images[SECOND_IMAGE] != null) {
+
+          let pixelsFromImage1 = this.pixelate(40, this.images[FIRST_IMAGE]);
+          let pixelsFromImage2 = this.pixelate(40, this.images[SECOND_IMAGE]);
+
+          if (this.compareImagePixels(pixelsFromImage1, pixelsFromImage2)) {
+            //Images are different, is there a snake?
+            //Submit new image to api
+            //Check result
+            //Conditionally notify
+            console.log("Camera movement detected.");
+            this.detectObject(this.images[SECOND_IMAGE]);
+          } else {
+            console.log("Camera no movement detected.");
+          }
         }
-      }, 5000);
+      }, PICTURE_INTERVAL);
     },
-    compareImages(prev, current) {
-      const rembrandt = new Rembrandt({
-        // `imageA` and `imageB` can be either Strings (file path on node.js,
-        // public url on Browsers) or Buffers
-        imageA: prev,
-        imageB: current,
+    detectObject(image) {
+      let base64Image = image.toBase64String('png');
+      // is this a snake?
+      const requestBody = {
+        image_blob: base64Image
+      }
 
-        // Needs to be one of Rembrandt.THRESHOLD_PERCENT or Rembrandt.THRESHOLD_PIXELS
-        thresholdType: Rembrandt.THRESHOLD_PERCENT,
+      const config = {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
 
-        // The maximum threshold (0...1 for THRESHOLD_PERCENT, pixel count for THRESHOLD_PIXELS
-        maxThreshold: 0.01,
-
-        // Maximum color delta (0...1):
-        maxDelta: 0.02,
-
-        // Maximum surrounding pixel offset
-        maxOffset: 0,
-
-        renderComposition: true, // Should Rembrandt render a composition image?
-        compositionMaskColor: Rembrandt.Color.RED // Color of unmatched pixels
-      })
-
-      // Run the comparison
-      rembrandt.compare()
-          .then(function (result) {
-            console.log('Passed:', result.passed)
-            console.log('Pixel Difference:', result.differences, 'Percentage Difference', result.percentageDifference, '%')
-            console.log('Composition image buffer:', result.compositionImage)
-
-            // Note that `compositionImage` is an Image when Rembrandt.js is run in the browser environment
+      return axios
+          .post(URL,
+              qs.stringify(requestBody),
+              config
+          )
+          .then((response) => {
+            if (response.data.some((e) => {
+              return e['Name'].toLowerCase == FIND_THIS
+            })) {
+              this.msg = 'Yes there is a snake here...';
+            } else {
+              this.msg = 'There is no snake here...';
+            }
           })
-          .catch((e) => {
-            console.error(e)
-          })
+          .catch(function (err) {
+            console.log("Error -> " + err.message);
+          });
     },
+    pixelate(sample_size, image) {
+
+      let pixels = [];
+
+      let mutable = BitmapFactory.makeMutable(image);
+      BitmapFactory.asBitmap(mutable).dispose((bmp) => {
+
+        for (let y = 0; y < image.height; y += sample_size) {
+          for (let x = 0; x < image.width; x += sample_size) {
+
+            let pixel = bmp.getPoint({"x": x, "y": y});
+            pixels.push(pixel);
+          }
+        }
+      });
+
+      return pixels;
+    },
+    compareImagePixels(prev, current) {
+      /*
+      Do simple comparison of the pixel arrays to detect movement
+       */
+      // threshold must be between 0 and 255
+      const threshold = 20;
+      for (let i = 0; i < prev.length; i++) {
+        let pPixel = prev[i];
+        let cPixel = current[i];
+        if (
+            Math.abs(pPixel.r - cPixel.r) > threshold
+            || Math.abs(pPixel.g - cPixel.g) > threshold
+            || Math.abs(pPixel.b - cPixel.b) > threshold
+        ) {
+          return true;
+        }
+      }
+      return false;
+    }
+    ,
     takePicture() {
-
-      let options = {
-        width: 500,
-        height: 500,
-        keepAspectRatio: false,
-        saveToGallery: true
-      };
       if (!this.cam) {
         this.cam = new CameraPlus();
       }
       this.cam
           .requestCameraPermissions()
           .then(() => {
-            this.cam.takePicture(options);
+            this.cam.takePicture(this.options);
           });
-
-      // const id = timerModule.setInterval(() => {
-      //     this.msg = '1';
-      // }, 1000);
-
-      // return;
-      //
-      // let options = {
-      //     width: 500,
-      //     height: 500,
-      //     keepAspectRatio: false,
-      //     saveToGallery: false
-      // };
-      // camera.requestPermissions()
-      //     .then(() => {
-      //         camera
-      //             .takePicture(options)
-      //             .then(imageAsset => {
-      //                 return this.imgToBase64(imageAsset);
-      //             })
-      //             .then((base64Image) => {
-      //                 // is this a snake?
-      //                 const requestBody = {
-      //                     image_blob: base64Image
-      //                 }
-      //
-      //                 const config = {
-      //                     headers: {
-      //                         'Content-Type': 'application/x-www-form-urlencoded'
-      //                     }
-      //                 }
-      //
-      //                 return axios
-      //                     .post(URL,
-      //                         qs.stringify(requestBody),
-      //                         config
-      //                     );
-      //             })
-      //             .then((response) => {
-      //                 if (response.data.some((e) => {
-      //                     return e['Name'] == 'Snake'
-      //                 })) {
-      //                     this.msg = 'Yes there is a snake here...';
-      //                 } else {
-      //                     this.msg = 'There is no snake here...';
-      //                 }
-      //
-      //             })
-      //             .catch(function (err) {
-      //                 console.log("Error -> " + err.message);
-      //             });
-      //     })
-      //     .catch(e => {
-      //         console.log("Error -> " + e.message);
-      //     });
-
     },
     imgToBase64(img) {
-      return imageSourceModule.fromAsset(img)
+      return ImageSource.fromAsset(img)
           .then(image => {
             let base64 = image.toBase64String('png');
             console.log(base64);
