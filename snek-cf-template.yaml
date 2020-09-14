@@ -1,0 +1,99 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Snek deploy CF script
+#Parameters:
+##  None
+#Mappings:
+## None
+
+Resources:
+  LambdaZipsBucket:
+    Type: AWS::S3::Bucket
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  LambdaFunction:
+    # DependsOn: CopyZips
+    Type: AWS::Lambda::Function
+    Properties:
+       Description: Snek Lambda function
+       Handler: handler.lambda_handler
+       Runtime: python3.8
+       Role: !GetAtt 'LambdaExecutionRole.Arn'
+       Timeout: 300
+       MemorySize: 128
+       Code:
+           S3Bucket: !Ref 'LambdaZipsBucket'
+           S3Key: 'snek-dev-1600047077.zip'
+
+  ANY0:
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      Integration:
+        CacheKeyParameters: [ ]
+        CacheNamespace: none
+        # Credentials: arn:aws:iam::511745405004:role/snek-dev-ZappaLambdaExecutionRole
+        Credentials: !Ref 'LambdaExecutionRole'
+        IntegrationHttpMethod: POST
+        IntegrationResponses: [ ]
+        PassthroughBehavior: NEVER
+        Type: AWS_PROXY
+        # Uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:511745405004:function:snek-dev/invocations
+        Uri: !Ref 'LambdaFunction'
+      MethodResponses: [ ]
+      ResourceId:
+        Fn::GetAtt:
+          - Api
+          - RootResourceId
+      RestApiId:
+        Ref: Api
+    Type: AWS::ApiGateway::Method
+  ANY1:
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: ANY
+      Integration:
+        CacheKeyParameters: [ ]
+        CacheNamespace: none
+        # Credentials: arn:aws:iam::511745405004:role/snek-dev-ZappaLambdaExecutionRole
+        Credentials: !Ref 'LambdaExecutionRole'
+        IntegrationHttpMethod: POST
+        IntegrationResponses: [ ]
+        PassthroughBehavior: NEVER
+        Type: AWS_PROXY
+        # Uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:511745405004:function:snek-dev/invocations
+        Uri: !Ref 'LambdaFunction'
+      MethodResponses: [ ]
+      ResourceId:
+        Ref: ResourceAnyPathSlashed
+      RestApiId:
+        Ref: Api
+    Type: AWS::ApiGateway::Method
+  Api:
+    Properties:
+      Name: snek-dev
+    Type: AWS::ApiGateway::RestApi
+  ResourceAnyPathSlashed:
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - Api
+          - RootResourceId
+      PathPart: "{proxy+}"
+      RestApiId:
+        Ref: Api
+    Type: AWS::ApiGateway::Resource
