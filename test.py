@@ -1,7 +1,7 @@
 import base64
 import requests
 
-URL = 'https://8f80b27ydg.execute-api.us-east-1.amazonaws.com/dev/find'
+URL = 'https://dpc5z0z652.execute-api.us-east-1.amazonaws.com/dev/find'
 
 
 def get_base64_encoded_image(image_path):

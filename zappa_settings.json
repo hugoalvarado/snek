@@ -1,10 +1,11 @@
 {
     "dev": {
         "app_function": "main.app",
-        "profile_name": "hugo102",
+        "profile_name": "freetier",
         "project_name": "snek",
         "runtime": "python3.7",
-        "s3_bucket": "zappa-snek",
-        "keep_warm": false
+        "s3_bucket": "zappa-snek-2",
+        "keep_warm": false,
+        "exclude": ["vue-snek", "*.md", "*.jpg", "*.csv", "*.ico"]
     }
 }

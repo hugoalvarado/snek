@@ -37,7 +37,7 @@ const CameraPlus = require("@nstudio/nativescript-camera-plus").CameraPlus;
 const axios = require('axios').default;
 const qs = require('querystring')
 
-const URL = 'https://8f80b27ydg.execute-api.us-east-1.amazonaws.com/dev/find';
+const URL = 'https://dpc5z0z652.execute-api.us-east-1.amazonaws.com/dev/find';
 
 const FIRST_IMAGE = 0;
 const SECOND_IMAGE = 1;
@@ -98,9 +98,17 @@ export default {
             //Images are different, is there a snake?
             //Submit new image to api
             //Check result
-            //Conditionally notify
+            //Conditionally notify > Notifications sent via backend
             console.log("Camera movement detected.");
-            this.detectObject(this.images[SECOND_IMAGE]);
+            this.detectObject(this.images[SECOND_IMAGE])
+                .then((detected) => {
+                  if (detected) {
+                    this.msg = 'Yes there is a snake here...';
+                  } else {
+                    this.msg = 'There is no snake here...';
+                  }
+                });
+
           } else {
             console.log("Camera no movement detected.");
           }
@@ -126,16 +134,13 @@ export default {
               config
           )
           .then((response) => {
-            if (response.data.some((e) => {
+            return response.data.some((e) => {
               return e['Name'].toLowerCase == FIND_THIS
-            })) {
-              this.msg = 'Yes there is a snake here...';
-            } else {
-              this.msg = 'There is no snake here...';
-            }
+            });
           })
           .catch(function (err) {
             console.log("Error -> " + err.message);
+            return false;
           });
     },
     pixelate(sample_size, image) {
