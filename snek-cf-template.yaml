@@ -1,8 +1,10 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Snek deploy CF script
-#Parameters:
-##  None
+Parameters:
+  ParamApiGatewayStageName:
+    Type: String
+    Default: dev
 #Mappings:
 ## None
 
@@ -37,63 +39,37 @@ Resources:
            S3Bucket: !Ref 'LambdaZipsBucket'
            S3Key: 'snek-dev-1600047077.zip'
 
-  ANY0:
-    Properties:
-      ApiKeyRequired: false
-      AuthorizationType: NONE
-      HttpMethod: ANY
-      Integration:
-        CacheKeyParameters: [ ]
-        CacheNamespace: none
-        # Credentials: arn:aws:iam::511745405004:role/snek-dev-ZappaLambdaExecutionRole
-        Credentials: !Ref 'LambdaExecutionRole'
-        IntegrationHttpMethod: POST
-        IntegrationResponses: [ ]
-        PassthroughBehavior: NEVER
-        Type: AWS_PROXY
-        # Uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:511745405004:function:snek-dev/invocations
-        Uri: !Ref 'LambdaFunction'
-      MethodResponses: [ ]
-      ResourceId:
-        Fn::GetAtt:
-          - Api
-          - RootResourceId
-      RestApiId:
-        Ref: Api
-    Type: AWS::ApiGateway::Method
-  ANY1:
-    Properties:
-      ApiKeyRequired: false
-      AuthorizationType: NONE
-      HttpMethod: ANY
-      Integration:
-        CacheKeyParameters: [ ]
-        CacheNamespace: none
-        # Credentials: arn:aws:iam::511745405004:role/snek-dev-ZappaLambdaExecutionRole
-        Credentials: !Ref 'LambdaExecutionRole'
-        IntegrationHttpMethod: POST
-        IntegrationResponses: [ ]
-        PassthroughBehavior: NEVER
-        Type: AWS_PROXY
-        # Uri: arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:511745405004:function:snek-dev/invocations
-        Uri: !Ref 'LambdaFunction'
-      MethodResponses: [ ]
-      ResourceId:
-        Ref: ResourceAnyPathSlashed
-      RestApiId:
-        Ref: Api
-    Type: AWS::ApiGateway::Method
-  Api:
-    Properties:
-      Name: snek-dev
+  ApiGateway:
     Type: AWS::ApiGateway::RestApi
-  ResourceAnyPathSlashed:
     Properties:
-      ParentId:
-        Fn::GetAtt:
-          - Api
-          - RootResourceId
-      PathPart: "{proxy+}"
-      RestApiId:
-        Ref: Api
+      Name: my-api
+      Description: My API
+
+  ApiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: false
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        Credentials: !Ref 'LambdaExecutionRole'
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        #uri: !Sub  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations"
+        #Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
+        #Uri: 'arn:aws:lambda:us-east-1:511745405004:function:snek-cf-deploy-LambdaFunction-O1VOCOSUH3BI'
+      ResourceId: !Ref "ApiGatewayResource"
+      RestApiId: !Ref "ApiGateway"
+
+  ApiGatewayResource:
     Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: 'lambda'
+      RestApiId: !Ref ApiGateway
+
+Outputs:
+  apiGatewayInvokeURL:
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ParamApiGatewayStageName}"
+  lambdaArn:
+      Value: !GetAtt "LambdaFunction.Arn"
