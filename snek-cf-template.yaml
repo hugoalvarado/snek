@@ -29,15 +29,15 @@ Resources:
     # DependsOn: CopyZips
     Type: AWS::Lambda::Function
     Properties:
-       Description: Snek Lambda function
-       Handler: handler.lambda_handler
-       Runtime: python3.8
-       Role: !GetAtt 'LambdaExecutionRole.Arn'
-       Timeout: 300
-       MemorySize: 128
-       Code:
-           S3Bucket: !Ref 'LambdaZipsBucket'
-           S3Key: 'snek-dev-1600047077.zip'
+      Description: Snek Lambda function
+      Handler: handler.lambda_handler
+      Runtime: python3.8
+      Role: !GetAtt 'LambdaExecutionRole.Arn'
+      Timeout: 300
+      MemorySize: 128
+      Code:
+        S3Bucket: !Ref 'LambdaZipsBucket'
+        S3Key: 'snek-dev-1600047077.zip'
 
   ApiGateway:
     Type: AWS::ApiGateway::RestApi
@@ -52,24 +52,25 @@ Resources:
       AuthorizationType: NONE
       HttpMethod: POST
       Integration:
-        Credentials: !Ref 'LambdaExecutionRole'
         IntegrationHttpMethod: POST
+        # Credentials: !Ref 'LambdaExecutionRole'
         Type: AWS_PROXY
-        #uri: !Sub  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations"
-        #Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaFunction.Arn}/invocations'
-        #Uri: 'arn:aws:lambda:us-east-1:511745405004:function:snek-cf-deploy-LambdaFunction-O1VOCOSUH3BI'
-      ResourceId: !Ref "ApiGatewayResource"
+        Uri: !Sub
+          - 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations'
+          - LambdaArn: !GetAtt 'LambdaFunction.Arn'
+      ResourceId: !GetAtt "ApiGateway.RootResourceId"
       RestApiId: !Ref "ApiGateway"
 
-  ApiGatewayResource:
-    Type: AWS::ApiGateway::Resource
+  ApiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "ApiGatewayRootMethod"
     Properties:
-      ParentId: !GetAtt ApiGateway.RootResourceId
-      PathPart: 'lambda'
-      RestApiId: !Ref ApiGateway
+      RestApiId: !Ref "ApiGateway"
+      StageName: !Ref "ParamApiGatewayStageName"
 
 Outputs:
   apiGatewayInvokeURL:
     Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ParamApiGatewayStageName}"
   lambdaArn:
-      Value: !GetAtt "LambdaFunction.Arn"
+    Value: !GetAtt "LambdaFunction.Arn"
